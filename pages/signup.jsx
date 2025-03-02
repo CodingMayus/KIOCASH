@@ -67,12 +67,29 @@ export default function LoginPage() {
         body: JSON.stringify(apiData),
       });
       
+      const backEndData = {
+        city: formData.city,
+        province: formData.province,
+        annual_income: parseFloat(formData.annualIncome) || 0,
+        dependents: parseInt(formData.dependents) || 0,
+        current_age: parseInt(formData.age) || 0,
+        pension_plan: parseFloat(formData.pensionAmount) || 0,
+        savings: parseFloat(formData.savings) || 0
+      };
       const data = await response.json();
-      
+
+      const response2 = await fetch('http://127.0.0.1:5000/get_customer_profile',{
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(backEndData),
+      })
+      console.log("Response from backend:", response2.json());
       if (!response.ok) {
         throw new Error(data.error || 'Registration failed');
       }
-      
+  
       console.log("Registration successful:", data);
       
       // Redirect to dashboard on success
@@ -95,7 +112,7 @@ export default function LoginPage() {
               alt="KOICASH Logo"
               width={64}
               height={64}
-              className="rounded-full border-2 border-blue-300"
+              className="animate-pulse rounded-full border-2 border-blue-300"
             />
           </div>
         </div>

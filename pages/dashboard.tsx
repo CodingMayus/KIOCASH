@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import jwt from 'jsonwebtoken';
 import { 
   BarChart, 
   PieChart, 
@@ -44,95 +45,157 @@ function ProgressBar({ percent, color = "blue" }) {
   );
 }
 
-
 export default function Dashboard() {
-  const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
+  const [uploadedPhoto, setUploadedPhoto] = useState(null);
+  const [decoded, setDecoded] = useState(null); // State to store decoded token
   
+  // Moved the useEffect inside the component
+  useEffect(() => {
+    const fetchAuthData = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/api/auth/me');
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Authenticated user data:", data);
+          const decodedToken = jwt.decode(data.token);
+          setDecoded(decodedToken); // Store decoded token in state
+          console.log("Decoded token:", decodedToken);
+        } else {
+          console.error("Failed to fetch authenticated user data");
+        }
+      } catch (error) {
+        console.error("Error fetching authenticated user data:", error);
+      }
+    };
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    fetchAuthData();
+  }, []);
+
+  const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUploadedPhoto(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setUploadedPhoto(file); // Store the file object directly
+    }
+  };
   
-    // This would come from your API in a real application
-  }
-  
-    //calls API to send to DB and Bak end to be analyzed.
-    //It should Return with values which will be used to dynamically update the users data.
-    //All of this will then be saved to db once more.  
-  }
-
-
-
-  // Handle the submit action (e.g., submit data to the server)
+  // Calls API to send to DB and backend to be analyzed
   const handleSubmit = async () => {
+    if (!uploadedPhoto) {
+      console.error("No image uploaded");
+      return;
+    }
 
-    // alert("Happy to help you with your financial goals!");
     try {
-      // Simulate a submit action
-      console.log("Submitting data...");
-      // Example API call (you can replace this with your own API request)
-      const response = await fetch('https://PLACERHOLDER.com/get_receipt_total', {
+      const formData = new FormData();
+      formData.append('image', uploadedPhoto); // Append the image file to the FormData
+      console.log(uploadedPhoto);
+      // console.log(formData);
+      const response = await fetch('/api/upload', {
         method: 'POST',
-        body: JSON.stringify({ uploadedPhoto }), // Example data to submit
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        body: formData,  // Send form data (multipart/form-data) with the image file
       });
+
       const data = await response.json();
+
       if (response.ok) {
-        // setSubmitted(true); // Update the state to show the submit was successful
-        console.log("Data submitted successfully!");
+        console.log("Image uploaded successfully!", data);
       } else {
-        console.error("Submit failed");
+        console.error("Upload failed", data);
       }
     } catch (error) {
       console.error("Error submitting data:", error);
     }
   };
 
-
-function handleDelete(){
+  function handleDelete() {
     setUploadedPhoto(null); // Clear the image or reset any data
     // setSubmitted(false); // Reset the submitted status
     console.log("Data deleted.");
-  };
-
-
-
-
-
+  }
 
   // This would come from your API in a real application
-    const [userData, setUserData] = useState({
-      name: "Alex Johnson",
-      email: "alex.johnson@example.com",
-      city: "Toronto",
-      province: "Ontario",
-      age: 32,
-      dependents: 2,
-      income: 85000,
-      savings: 42500,
-      pension: 65000,
-      profileImage: "/fishloading.jpg"
-    });
+  const [userData, setUserData] = useState({
+    name: "Alex Johnson",
+    email: "alex.johnson@example.com",
+    city: "Toronto",
+    province: "Ontario",
+    age: 32,
+    dependents: 2,
+    income: 85000,
+    savings: 42500,
+    pension: 65000,
+    profileImage: "/fishloading.jpg"
+  });
 
-    const fetchData = async () => {
-      const response = await fetch('/api/userdata');
-      const data = await response.json();
-      setUserData(data);
+  // Use decoded token to fetch user data
+  useEffect(() => {
+    // Only fetch if we have the decoded token with user ID
+    if (decoded && decoded._id) {
+      const fetchUserData = async () => {
+        try {
+          const response = await fetch(`/api/userdata`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ _id: decoded._id }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            setUserData(data);
+          } else {
+            console.error("Failed to fetch user data");
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+        }
+      };
+      
+      fetchUserData();
+    }
+  }, [decoded]); // Run this effect when decoded token changes
+
+  useEffect(() => {
+    const createBudgetFromProfile = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:5000/create_budget_from_profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userData }),
+        });
+
+        if (response.ok) {
+          const budget = await response.json();
+          console.log("Budget created from profile:", budget);
+          // Update the state with the new budget data
+          setBudgetData({
+            income: budget.monthly_income,
+            spent: budget.housing.total + budget.food.total + budget.transportation.total + budget.miscellaneous.total,
+            saved: budget.savings.total,
+            categories: [
+              { name: "Housing", amount: budget.housing.total, limit: budget.housing.total, color: "blue" },
+              { name: "Food", amount: budget.food.total, limit: budget.food.total, color: "green" },
+              { name: "Transport", amount: budget.transportation.total, limit: budget.transportation.total, color: "yellow" },
+              { name: "Miscellaneous", amount: budget.miscellaneous.total, limit: budget.miscellaneous.total, color: "gray" },
+              { name: "Savings", amount: budget.savings.total, limit: budget.savings.total, color: "purple" }
+            ]
+          });
+        } else {
+          console.error("Failed to create budget from profile");
+        }
+      } catch (error) {
+        console.error("Error creating budget from profile:", error);
+      }
     };
 
-    useEffect(() => {
-      fetchData();
-    }, []);
+    createBudgetFromProfile();
+  }, [userData]);
 
   // Example budget data
-  const budgetData = {
+  const [budgetData, setBudgetData] = useState({
     income: 7083, // Monthly income
     spent: 4850,
     saved: 2233,
@@ -144,7 +207,7 @@ function handleDelete(){
       { name: "Utilities", amount: 350, limit: 400, color: "purple" },
       { name: "Other", amount: 350, limit: 500, color: "gray" }
     ]
-  };
+  });
 
   // Example bills data
   const upcomingBills = [
@@ -238,8 +301,9 @@ function handleDelete(){
           </div>
         </Widget>
         
-        {/* Budget Summary */}
-        {/* <Widget 
+        {/* Rest of your component... */}
+        {/* Monthly Budget Widget */}
+        <Widget 
           title="Monthly Budget" 
           icon={<CreditCard className="h-6 w-6 text-blue-600" />}
           className="md:col-span-2"
@@ -273,82 +337,47 @@ function handleDelete(){
               </div>
             ))}
           </div>
-        </Widget> */}
-
-<Widget 
-  title="Monthly Budget" 
-  icon={<CreditCard className="h-6 w-6 text-blue-600" />}
-  className="md:col-span-2"
->
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-    <div className="bg-blue-50 p-3 rounded-lg">
-      <p className="text-sm text-gray-500">Income</p>
-      <p className="text-xl font-bold text-blue-900">${budgetData.income}</p>
-    </div>
-    <div className="bg-green-50 p-3 rounded-lg">
-      <p className="text-sm text-gray-500">Saved</p>
-      <p className="text-xl font-bold text-green-600">${budgetData.saved}</p>
-      <p className="text-xs text-green-600">{savingsRate}% of income</p>
-    </div>
-    <div className="bg-purple-50 p-3 rounded-lg">
-      <p className="text-sm text-gray-500">Spent</p>
-      <p className="text-xl font-bold text-purple-600">${budgetData.spent}</p>
-      <p className="text-xs text-purple-600">{Math.round((budgetData.spent / budgetData.income) * 100)}% of income</p>
-    </div>
-  </div>
-  
-  <h3 className="font-medium text-gray-700 mb-2">Category Spending</h3>
-  <div className="space-y-3">
-    {budgetData.categories.map((category, index) => (
-      <div key={index}>
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-sm">{category.name}</span>
-          <span className="text-sm font-medium">${category.amount} / ${category.limit}</span>
-        </div>
-        <ProgressBar percent={(category.amount / category.limit) * 100} color={category.color} />
-      </div>
-    ))}
-  </div>
-{!uploadedPhoto && (
-  <>
-    {/* Photo upload section */}
-    <div className="mt-6">
-      <h3 className="font-medium text-gray-700 mb-2">Upload Photo</h3>
-      <div className="flex justify-center items-center border-2 border-dashed border-gray-300 rounded-lg py-6 px-4 cursor-pointer">
-        <label className="text-sm text-gray-500">
-          <input 
-            type="file" 
-            accept="image/*" 
-            onChange={handleFileChange}
-            className="hidden" 
-          />
-          <div className="flex flex-col items-center">
-            <span className="text-blue-600 font-semibold">Click to upload photo</span>
-            <span className="text-gray-400">JPEG, PNG, or GIF</span>
-          </div>
-        </label>
-      </div>
-    </div>
-  </>
-)}
-    {/* Display uploaded photo */}
-    {uploadedPhoto && (
-      <div className="mt-4 flex justify-center items-center flex-col">
-        <img 
-          src={uploadedPhoto} 
-          alt="Uploaded" 
-          className="max-w-full h-auto rounded-lg shadow-lg" 
-        />
-        <div className="flex space-x-4 mt-4">
-          <div className="hover:bg-blue-700 transition w-32 bg-blue-600 text-white text-center py-2 rounded-lg cursor-pointer" onClick={handleSubmit}>SUBMIT</div>
-          <div className="hover:bg-red-700 transition w-32 bg-red-600 text-white text-center py-2 rounded-lg cursor-pointer" onClick = {handleDelete}>DELETE</div>
-        </div>
-      </div>
-    )}
-</Widget>
-
+          {!uploadedPhoto && (
+            <>
+              {/* Photo upload section */}
+              <div className="mt-6">
+                <h3 className="font-medium text-gray-700 mb-2">Upload Photo</h3>
+                <div className="flex justify-center items-center border-2 border-dashed border-gray-300 rounded-lg py-6 px-4 cursor-pointer">
+                  <label className="text-sm text-gray-500">
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleFileChange}
+                      className="hidden" 
+                    />
+                    <div className="flex flex-col items-center">
+                      <span className="text-blue-600 font-semibold">Click to upload photo</span>
+                      <span className="text-gray-400">JPEG, PNG, or GIF</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </>
+          )}
+          {/* Display uploaded photo */}
+          {uploadedPhoto && (
+            <div className="mt-4 flex justify-center items-center flex-col">
+              <img 
+                src={URL.createObjectURL(uploadedPhoto)} 
+                alt="Uploaded" 
+                className="max-w-full h-auto rounded-lg shadow-lg" 
+              />
+              <div className="flex space-x-4 mt-4">
+                <div className="hover:bg-blue-700 transition w-32 bg-blue-600 text-white text-center py-2 rounded-lg cursor-pointer" onClick={handleSubmit}>SUBMIT</div>
+                <div className="hover:bg-red-700 transition w-32 bg-red-600 text-white text-center py-2 rounded-lg cursor-pointer" onClick={handleDelete}>DELETE</div>
+              </div>
+            </div>
+          )}
+        </Widget>
       </div>
       
+      {/* The rest of your component remains unchanged */}
+      {/* Remaining dashboard widgets... */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         {/* Upcoming Bills */}
         <Widget 
@@ -541,7 +570,7 @@ function MapPin(props) {
     <svg
       {...props}
       xmlns="http://www.w3.org/2000/svg"
-      width="24"
+      width="24" 
       height="24"
       viewBox="0 0 24 24"
       fill="none"

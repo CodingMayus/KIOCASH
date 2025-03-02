@@ -5,7 +5,6 @@ import Layout from "./navbar"; // Adjust the path as necessary
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <>
-    {/* <Layout/> */}
     <Component {...pageProps} />
     </>
   );

@@ -1,8 +1,8 @@
 // pages/api/auth/lockedin.js
 
 import jwt from 'jsonwebtoken';
-import cookie from 'cookie';
-import clientPromise from "../../lib/mongodb";
+import { serialize } from 'cookie';
+import clientPromise from "../../../lib/mongodb";
 import { NextApiRequest, NextApiResponse } from 'next';
 
 const SECRET_KEY = process.env.JWT_SECRET_KEY || 'your-secret-key'; // Store this securely in environment variables
@@ -26,8 +26,9 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     const db = client.db("users");
 
     // Find user with the provided email
-    const user = await db.collection("users").findOne({ email });
-
+    const user = await db.collection("users").findOne({ _id: email });
+    // console.log("POOPOOOPOOOPOO");
+    // alert(user);
     // Check if user exists
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -48,8 +49,9 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     const token = jwt.sign(payload, SECRET_KEY, { expiresIn: '1h' });
 
     // Set the token in a cookie
-    res.setHeader('Set-Cookie', cookie.serialize('auth_token', token, {
-      httpOnly: true, // To ensure the cookie can't be accessed via JavaScript
+
+    res.setHeader('Set-Cookie', serialize('auth_token', token, {
+      // To ensure the cookie can't be accessed via JavaScript
       secure: process.env.NODE_ENV === 'production', // Ensures cookie is only sent over HTTPS in production
       maxAge: 60 * 60, // 1 hour
       path: '/', // Accessible throughout the site

@@ -34,7 +34,8 @@ export default function Login() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+        const errorMessage = data && data.error ? data.error : 'Login failed. Please try again.';
+        throw new Error(errorMessage);
       }
 
       // If remember me is checked, we could set a longer-lived cookie via another API call
@@ -75,7 +76,7 @@ export default function Login() {
                 alt="KoiCash Logo"
                 layout="fill"
                 objectFit="contain"
-                className="animate-pulse"
+                className="animate-pulse rounded-full border-2 border-blue-300"
               />
             </div>
           </div>
