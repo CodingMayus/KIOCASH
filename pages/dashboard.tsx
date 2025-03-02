@@ -44,9 +44,70 @@ function ProgressBar({ percent, color = "blue" }) {
   );
 }
 
-export default function Dashboard() {
-  // This would come from your API in a real application
 
+export default function Dashboard() {
+  const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
+  
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedPhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+  
+    // This would come from your API in a real application
+  }
+  
+    //calls API to send to DB and Bak end to be analyzed.
+    //It should Return with values which will be used to dynamically update the users data.
+    //All of this will then be saved to db once more.  
+  }
+
+
+
+  // Handle the submit action (e.g., submit data to the server)
+  const handleSubmit = async () => {
+
+    // alert("Happy to help you with your financial goals!");
+    try {
+      // Simulate a submit action
+      console.log("Submitting data...");
+      // Example API call (you can replace this with your own API request)
+      const response = await fetch('https://PLACERHOLDER.com/get_receipt_total', {
+        method: 'POST',
+        body: JSON.stringify({ uploadedPhoto }), // Example data to submit
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await response.json();
+      if (response.ok) {
+        // setSubmitted(true); // Update the state to show the submit was successful
+        console.log("Data submitted successfully!");
+      } else {
+        console.error("Submit failed");
+      }
+    } catch (error) {
+      console.error("Error submitting data:", error);
+    }
+  };
+
+
+function handleDelete(){
+    setUploadedPhoto(null); // Clear the image or reset any data
+    // setSubmitted(false); // Reset the submitted status
+    console.log("Data deleted.");
+  };
+
+
+
+
+
+
+  // This would come from your API in a real application
     const [userData, setUserData] = useState({
       name: "Alex Johnson",
       email: "alex.johnson@example.com",
@@ -79,7 +140,7 @@ export default function Dashboard() {
       { name: "Housing", amount: 2100, limit: 2300, color: "blue" },
       { name: "Food", amount: 850, limit: 1000, color: "green" },
       { name: "Transport", amount: 700, limit: 800, color: "yellow" },
-      { name: "Entertainment", amount: 500, limit: 400, color: "red" },
+      { name: "Entertainment", amount: 300, limit: 400, color: "red" },
       { name: "Utilities", amount: 350, limit: 400, color: "purple" },
       { name: "Other", amount: 350, limit: 500, color: "gray" }
     ]
@@ -178,7 +239,7 @@ export default function Dashboard() {
         </Widget>
         
         {/* Budget Summary */}
-        <Widget 
+        {/* <Widget 
           title="Monthly Budget" 
           icon={<CreditCard className="h-6 w-6 text-blue-600" />}
           className="md:col-span-2"
@@ -212,7 +273,80 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-        </Widget>
+        </Widget> */}
+
+<Widget 
+  title="Monthly Budget" 
+  icon={<CreditCard className="h-6 w-6 text-blue-600" />}
+  className="md:col-span-2"
+>
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+    <div className="bg-blue-50 p-3 rounded-lg">
+      <p className="text-sm text-gray-500">Income</p>
+      <p className="text-xl font-bold text-blue-900">${budgetData.income}</p>
+    </div>
+    <div className="bg-green-50 p-3 rounded-lg">
+      <p className="text-sm text-gray-500">Saved</p>
+      <p className="text-xl font-bold text-green-600">${budgetData.saved}</p>
+      <p className="text-xs text-green-600">{savingsRate}% of income</p>
+    </div>
+    <div className="bg-purple-50 p-3 rounded-lg">
+      <p className="text-sm text-gray-500">Spent</p>
+      <p className="text-xl font-bold text-purple-600">${budgetData.spent}</p>
+      <p className="text-xs text-purple-600">{Math.round((budgetData.spent / budgetData.income) * 100)}% of income</p>
+    </div>
+  </div>
+  
+  <h3 className="font-medium text-gray-700 mb-2">Category Spending</h3>
+  <div className="space-y-3">
+    {budgetData.categories.map((category, index) => (
+      <div key={index}>
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-sm">{category.name}</span>
+          <span className="text-sm font-medium">${category.amount} / ${category.limit}</span>
+        </div>
+        <ProgressBar percent={(category.amount / category.limit) * 100} color={category.color} />
+      </div>
+    ))}
+  </div>
+{!uploadedPhoto && (
+  <>
+    {/* Photo upload section */}
+    <div className="mt-6">
+      <h3 className="font-medium text-gray-700 mb-2">Upload Photo</h3>
+      <div className="flex justify-center items-center border-2 border-dashed border-gray-300 rounded-lg py-6 px-4 cursor-pointer">
+        <label className="text-sm text-gray-500">
+          <input 
+            type="file" 
+            accept="image/*" 
+            onChange={handleFileChange}
+            className="hidden" 
+          />
+          <div className="flex flex-col items-center">
+            <span className="text-blue-600 font-semibold">Click to upload photo</span>
+            <span className="text-gray-400">JPEG, PNG, or GIF</span>
+          </div>
+        </label>
+      </div>
+    </div>
+  </>
+)}
+    {/* Display uploaded photo */}
+    {uploadedPhoto && (
+      <div className="mt-4 flex justify-center items-center flex-col">
+        <img 
+          src={uploadedPhoto} 
+          alt="Uploaded" 
+          className="max-w-full h-auto rounded-lg shadow-lg" 
+        />
+        <div className="flex space-x-4 mt-4">
+          <div className="hover:bg-blue-700 transition w-32 bg-blue-600 text-white text-center py-2 rounded-lg cursor-pointer" onClick={handleSubmit}>SUBMIT</div>
+          <div className="hover:bg-red-700 transition w-32 bg-red-600 text-white text-center py-2 rounded-lg cursor-pointer" onClick = {handleDelete}>DELETE</div>
+        </div>
+      </div>
+    )}
+</Widget>
+
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">

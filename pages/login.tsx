@@ -355,7 +355,7 @@ export default function Login() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md rounded-3xl">
         <div className="text-center">
           <div className="flex justify-center">
             <div className="relative w-20 h-20 mb-2">
